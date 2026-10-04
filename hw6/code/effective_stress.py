@@ -34,16 +34,16 @@ def horizontal_stress(z, water_table, k0, sublayers):
     return effective_horizontal(z, k0, water_table, sublayers) + u
 
 
-def plot_stresses_plain(depths, water_table, k0):
+def plot_stresses_plain(depths, water_table, k0, sublayers):
     ''' Simple plot for submitting hw. '''
     z = list(depths.values())
 
     quantities = [
-        ([vertical_stress(d) for d in z],                        'σv'),
+        ([vertical_stress(d, sublayers) for d in z],                        'σv'),
         ([pore_pressure(d, water_table) for d in z],             'u'),
-        ([effective_stress(d, water_table) for d in z],          "σ'v"),
-        ([effective_horizontal(d, k0, water_table) for d in z],  "σ'h"),
-        ([horizontal_stress(d, water_table, k0) for d in z],     'σh'),
+        ([effective_stress(d, water_table, sublayers) for d in z],          "σ'v"),
+        ([effective_horizontal(d, k0, water_table, sublayers) for d in z],  "σ'h"),
+        ([horizontal_stress(d, water_table, k0, sublayers) for d in z],     'σh'),
     ]
 
     fig, axes = plt.subplots(1, 5, sharey=True, figsize=(14, 5))
@@ -58,7 +58,7 @@ def plot_stresses_plain(depths, water_table, k0):
     axes[0].set_ylabel('Depth (m)')
     axes[0].invert_yaxis()
     fig.tight_layout()
-    plt.show())
+    return fig
 
 def plot_stresses(depths, water_table, k0, sublayers, soils):
     '''Plot for writeup. Displays water table and soil layers, including shading. '''
@@ -101,22 +101,34 @@ def plot_stresses(depths, water_table, k0, sublayers, soils):
     fig.tight_layout()
     return fig
 
-def main(depths, k0, water_table, sublayers, soils, save_plot=False, filename='stresses_plot.png'):
 
+def print_table(depths, k0, water_table, sublayers):
     print(f"{'Pt':<4}{'z (m)':>6}{'σ (kPa)':>10}{'u (kPa)':>10}{'σ\' (kPa)':>11}{'σ\'h (kPa)':>11}{'σh (kPa)':>10}")
     for location, z in depths.items():
         print(f"{location:<4}{z:>6}{vertical_stress(z, sublayers):>10.2f}"
               f"{pore_pressure(z, water_table):>10.2f}{effective_stress(z, water_table, sublayers):>11.2f}"
               f"{effective_horizontal(z, k0, water_table, sublayers):>11.2f}{horizontal_stress(z, water_table, k0, sublayers):>10.2f}")
 
-    fig = plot_stresses(depths, water_table, k0, sublayers, soils)
+def save_figure(fig, filename):
+    out_dir = Path('figures')
+    out_dir.mkdir(exist_ok=True)
+    fig.savefig(out_dir / filename, dpi=200, bbox_inches='tight')
 
-    if save_plot:
-        out_dir = Path('figures')
-        out_dir.mkdir(exist_ok=True)
-        fig.savefig(out_dir / filename, dpi=200, bbox_inches='tight')
+
+
+def main(depths, k0, water_table, sublayers, soils, problem, save_plots=False):
+    print(f"\n{problem}")
+    print_table(depths, k0, water_table, sublayers)
+
+    fig_plain = plot_stresses_plain(depths, water_table, k0, sublayers)
+    fig_layers = plot_stresses(depths, water_table, k0, sublayers, soils)
+
+    if save_plots:
+        save_figure(fig_plain, f'{problem}_stresses_plain.png')
+        save_figure(fig_layers, f'{problem}_stresses_layers.png')
 
     plt.show()
+
 
 
     
@@ -133,4 +145,23 @@ if __name__ == "__main__":
     ('Sand', 0, 7, 'tan'),
     ('Silt', 7, 12, 'lightgray')]
 
-    main(depths, k0, water_table, sublayers, soils, save_plot=True, filename='problem1_stresses.png')
+    main(depths, k0, water_table, sublayers, soils, problem="Problem 1", save_plots=False)
+
+    depths = {'A': 0, 'B': 4, # water table
+          'C': 6, 'D': 10, 'E': 15} # depths in meters
+    water_table =  4
+
+    sublayers = [
+        (0, 4, 17.8), # gravel above WT
+        (4, 6, 18.5), # gravel below WT
+        (6, 10, 19.5), # sand below WT
+        (10, 15, 19.0) # sandy gravel below WT
+    ]
+
+    soils =[
+        ('Gravel', 0, 6, 'lightblue'),
+        ('Sand', 6, 10, 'tan'),
+        ('Sandy Gravel', 10, 15, 'lightgray')
+    ]
+
+    main(depths, k0, water_table, sublayers, soils, problem="Problem 2", save_plots=True)
